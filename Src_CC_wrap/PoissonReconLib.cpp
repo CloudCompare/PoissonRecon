@@ -369,7 +369,7 @@ void ExtractMesh(	const PoissonReconLib::Parameters& params,
 		out_mesh.addVertex(v.point.coords);
 		if (sampleData)
 		{
-			//out_mesh.addNormal(v.normal);
+			out_mesh.addNormal(v.normal);
 			out_mesh.addColor(v.color);
 		}
 		if (params.density)
