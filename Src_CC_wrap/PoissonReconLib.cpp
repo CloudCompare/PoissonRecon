@@ -715,6 +715,8 @@ bool PoissonReconLib::Reconstruct(	const Parameters& params,
 
 #ifdef WITH_OPENMP
 	ThreadPool::Init((ThreadPool::ParallelType)(int)ThreadPool::OPEN_MP, std::thread::hardware_concurrency());
+#elif defined __aarch64__ // See https://github.com/mkazhdan/PoissonRecon/issues/190#issuecomment-922378290.
+	ThreadPool::Init((ThreadPool::ParallelType)(int)ThreadPool::NONE, std::thread::hardware_concurrency());
 #else
 	ThreadPool::Init((ThreadPool::ParallelType)(int)ThreadPool::THREAD_POOL, std::thread::hardware_concurrency());
 #endif
@@ -759,6 +761,8 @@ bool PoissonReconLib::Reconstruct(	const Parameters& params,
 
 #ifdef WITH_OPENMP
 	ThreadPool::Init((ThreadPool::ParallelType)(int)ThreadPool::OPEN_MP, std::thread::hardware_concurrency());
+#elif defined __aarch64__ // See https://github.com/mkazhdan/PoissonRecon/issues/190#issuecomment-922378290.
+	ThreadPool::Init((ThreadPool::ParallelType)(int)ThreadPool::NONE, std::thread::hardware_concurrency());
 #else
 	ThreadPool::Init((ThreadPool::ParallelType)(int)ThreadPool::THREAD_POOL, std::thread::hardware_concurrency());
 #endif
