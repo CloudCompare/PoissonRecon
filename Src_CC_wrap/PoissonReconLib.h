@@ -1,3 +1,5 @@
+#pragma once
+
 //##########################################################################
 //#                                                                        #
 //#               CLOUDCOMPARE WRAPPER: PoissonReconLib                    #
@@ -14,9 +16,6 @@
 //#               COPYRIGHT: Daniel Girardeau-Montaut                      #
 //#                                                                        #
 //##########################################################################
-
-#ifndef CC_POISSON_RECON_LIB_WRAPPER
-#define CC_POISSON_RECON_LIB_WRAPPER
 
 #include <cstddef>
 
@@ -67,10 +66,13 @@ public:
 		**/
 		float pointWeight = 2.0f;
 
+		//! Whether interpolation should be exact or approximate
+		bool exactInterpolation = true;
+
 		//! The number of solver iterations
 		/** Number of Gauss-Seidel relaxations to be performed at each level of the octree hierarchy.
 		**/
-		int iters = 8;
+	    int iters = 8;
 
 		//! If this flag is enabled, the sampling density is written out with the vertices
 		bool density = false;
@@ -79,22 +81,25 @@ public:
 		bool withColors = true;
 
 		//! Data pull factor
-		/** If withColors is rue, this floating point value specifies the relative importance of finer color estimates over lower ones.
+		/** If withColors is true, this floating point value specifies the relative importance of finer color estimates over lower ones.
 		**/
 		float colorPullFactor = 32.0f;
 
-		//! Normal confidence exponent
-		/** Exponent to be applied to a point's confidence to adjust its weight. (A point's confidence is defined by the magnitude of its normal.)
-		**/
-		float normalConfidence = 0.0;
-		
-		//! Normal confidence bias exponent
-		/** Exponent to be applied to a point's confidence to bias the resolution at which the sample contributes to the linear system. (Points with lower confidence are biased to contribute at coarser resolutions.)
-		**/
-		float normalConfidenceBias = 0.0;
+		////! Normal confidence exponent
+		///** Exponent to be applied to a point's confidence to adjust its weight. (A point's confidence is defined by the magnitude of its normal.)
+		//**/
+		//float normalConfidence = 0.0;
+		//
+		////! Normal confidence bias exponent
+		///** Exponent to be applied to a point's confidence to bias the resolution at which the sample contributes to the linear system. (Points with lower confidence are biased to contribute at coarser resolutions.)
+		//**/
+		//float normalConfidenceBias = 0.0;
 
 		//! Enabling this flag has the reconstructor use linear interpolation to estimate the positions of iso-vertices.
 		bool linearFit = false;
+
+		//! Allow non-manifold output
+		bool nonManifold = false;
 
 		//! This parameter specifies the number of threads across which the solver should be parallelized
 		int threads = 1;
@@ -115,6 +120,9 @@ public:
 		//! This flag specifies the accuracy cut-off to be used for CG
 		float cgAccuracy = 1.0e-3f;
 
+		//! Low depth cut-off
+		float lowDepthCutOff = 0.0f;
+
 	};
 
 	//! Input cloud interface
@@ -126,7 +134,7 @@ public:
 		virtual bool hasColors() const = 0;
 		virtual void getPoint(size_t index, Real* coords) const = 0;
 		virtual void getNormal(size_t index, Real* coords) const = 0;
-		virtual void getColor(size_t index, Real* rgb) const = 0;
+		virtual void getColor(size_t index, float* rgb) const = 0;
 	};
 
 	//! Output mesh interface
@@ -135,7 +143,7 @@ public:
 	public:
 		virtual void addVertex(const Real* coords) = 0;
 		virtual void addNormal(const Real* coords) = 0;
-		virtual void addColor(const Real* rgb) = 0;
+		virtual void addColor(const float* rgb) = 0;
 		virtual void addDensity(double d) = 0;
 		virtual void addTriangle(size_t i1, size_t i2, size_t i3) = 0;
 	};
@@ -150,6 +158,7 @@ public:
 							const PoissonReconLib::ICloud<double>& inCloud,
 							PoissonReconLib::IMesh<double>& ouMesh);
 
+protected:
+
 };
 
-#endif // CC_POISSON_RECON_LIB_12_0_WRAPPER

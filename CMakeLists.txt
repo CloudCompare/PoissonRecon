@@ -33,6 +33,10 @@ target_compile_definitions( ${PROJECT_NAME}
 		_CRT_SECURE_NO_WARNINGS
 		NOMINMAX
 )
+target_compile_features( ${PROJECT_NAME}
+	PRIVATE
+		cxx_std_17
+)
 
 option( POISSON_RECON_WITH_OPEN_MP "Compile PoissonRecon plugin with OpenMP support" OFF )
 if( POISSON_RECON_WITH_OPEN_MP )
