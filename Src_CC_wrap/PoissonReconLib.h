@@ -67,7 +67,7 @@ public:
 		float pointWeight = 2.0f;
 
 		//! Whether interpolation should be exact or approximate
-		bool exactInterpolation = true;
+		bool exactInterpolation = false; // FIXME warning: crashes if exactInterpolation is true and pointWeight != 0
 
 		//! The number of solver iterations
 		/** Number of Gauss-Seidel relaxations to be performed at each level of the octree hierarchy.
