@@ -14,10 +14,8 @@ endif()
 target_sources( ${PROJECT_NAME}
 	PUBLIC
 		${CMAKE_CURRENT_SOURCE_DIR}/Src_CC_wrap/PoissonReconLib.h
-		${CMAKE_CURRENT_SOURCE_DIR}/Src_CC_wrap/PointData.h
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/Src_CC_wrap/PoissonReconLib.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/Src_CC_wrap/PointData.cpp
 )
 
 target_include_directories( ${PROJECT_NAME}
