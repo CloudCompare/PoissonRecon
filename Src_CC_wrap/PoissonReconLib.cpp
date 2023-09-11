@@ -184,7 +184,7 @@ public:
 		{
 			return false;
 		}
-		Point<Real, 3>& point = p.get<0>();
+		Point<Real, 3>& point = p.template get<0>();
 		cloud.getPoint(currentIndex, point.coords);
 
 		if (xform != nullptr)
@@ -192,10 +192,10 @@ public:
 			point = (*xform) * point;
 		}
 
-		Point<Real, 3>& normal = p.get<1>().get<0>();
+		Point<Real, 3>& normal = p.template get<1>().template get<0>();
 		cloud.getNormal(currentIndex, normal.coords);
 
-		Point<float, 3>& color = p.get<1>().get<1>();
+		Point<float, 3>& color = p.template get<1>().template get<1>();
 		if (cloud.hasColors())
 		{
 			cloud.getColor(currentIndex, color.coords);
@@ -514,15 +514,15 @@ bool Execute(const PoissonReconLib::ICloud<Real>& in_cloud,
 				{
 					mesh->nextVertex(vertex);
 					xForm(vertex);
-					out_mesh.addVertex(vertex.get<0>().coords);
+					out_mesh.addVertex(vertex.template get<0>().coords);
 
-					const auto* normal = vertex.get<1>().coords;
+					const auto* normal = vertex.template get<1>().coords;
 					out_mesh.addNormal(normal);
 
-					auto density = vertex.get<2>();
+					auto density = vertex.template get<2>();
 					out_mesh.addDensity(density);
 
-					const auto* color = vertex.get<3>().coords;
+					const auto* color = vertex.template get<3>().coords;
 					out_mesh.addColor(color);
 				}
 			}
@@ -573,12 +573,12 @@ bool Execute(const PoissonReconLib::ICloud<Real>& in_cloud,
 				{
 					mesh->nextVertex(vertex);
 					xForm(vertex);
-					out_mesh.addVertex(vertex.get<0>().coords);
+					out_mesh.addVertex(vertex.template get<0>().coords);
 
-					const auto* normal = vertex.get<1>().coords;
+					const auto* normal = vertex.template get<1>().coords;
 					out_mesh.addNormal(normal);
 
-					const auto* color = vertex.get<2>().coords;
+					const auto* color = vertex.template get<2>().coords;
 					out_mesh.addColor(color);
 				}
 			}
@@ -650,9 +650,9 @@ bool PoissonReconLib::Reconstruct(	const Parameters& params,
 	test.template get<2>()(); // scalar
 
 	InputOrientedPointStreamInfo<float, DIMENSION, AuxDataFactory>::PointAndDataType test2;
-	test2.get<0>().coords;
-	test2.get<1>().get<0>().coords;
-	test2.get<1>().get<1>()();
+	test2.template get<0>().coords;
+	test2.template get<1>().template get<0>().coords;
+	test2.template get<1>().template get<1>()();
 
 	//Point<float, DIMENSION>::coords
 
