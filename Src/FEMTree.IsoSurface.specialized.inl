@@ -815,17 +815,31 @@ protected:
 		_SliceValues& sValues = slabValues[depth].sliceValues( slice );
 		bool useBoundaryEvaluation = false;
 		for( int d=0 ; d<Dim ; d++ ) if( FEMDegrees[d]==0 || ( FEMDegrees[d]==1 && sValues.cornerGradients ) ) useBoundaryEvaluation = true;
+#if defined(__APPLE__)
+		std::vector< ConstPointSupportKey< UIntPack< FEMSignature< FEMSigs >::Degree ... > > > neighborKeys(1);
+		std::vector< ConstCornerSupportKey< UIntPack< FEMSignature< FEMSigs >::Degree ... > > > bNeighborKeys(1);
+#else
 		std::vector< ConstPointSupportKey< UIntPack< FEMSignature< FEMSigs >::Degree ... > > > neighborKeys( ThreadPool::NumThreads() );
 		std::vector< ConstCornerSupportKey< UIntPack< FEMSignature< FEMSigs >::Degree ... > > > bNeighborKeys( ThreadPool::NumThreads() );
+#endif
 		if( useBoundaryEvaluation ) for( size_t i=0 ; i<neighborKeys.size() ; i++ ) bNeighborKeys[i].set( tree._localToGlobal( depth ) );
 		else                        for( size_t i=0 ; i<neighborKeys.size() ; i++ )  neighborKeys[i].set( tree._localToGlobal( depth ) );
+#if defined(__APPLE__)
+		for( size_t i = tree._sNodesBegin(depth,slice-(zDir==HyperCube::BACK ? 0 : 1)) ; i !=  tree._sNodesEnd(depth,slice-(zDir==HyperCube::BACK ? 0 : 1)) ; i++ )
+#else
 		ThreadPool::Parallel_for( tree._sNodesBegin(depth,slice-(zDir==HyperCube::BACK ? 0 : 1)) , tree._sNodesEnd(depth,slice-(zDir==HyperCube::BACK ? 0 : 1)) , [&]( unsigned int thread , size_t i )
+#endif
 		{
 			if( tree._isValidSpaceNode( tree._sNodes.treeNodes[i] ) )
 			{
 				Real squareValues[ HyperCube::Cube< Dim-1 >::template ElementNum< 0 >() ];
+#if defined(__APPLE__)
+				ConstPointSupportKey< UIntPack< FEMSignature< FEMSigs >::Degree ... > >& neighborKey = neighborKeys[0];
+				ConstCornerSupportKey< UIntPack< FEMSignature< FEMSigs >::Degree ... > >& bNeighborKey = bNeighborKeys[0];
+#else
 				ConstPointSupportKey< UIntPack< FEMSignature< FEMSigs >::Degree ... > >& neighborKey = neighborKeys[ thread ];
 				ConstCornerSupportKey< UIntPack< FEMSignature< FEMSigs >::Degree ... > >& bNeighborKey = bNeighborKeys[ thread ];
+#endif
 				TreeNode* leaf = tree._sNodes.treeNodes[i];
 				if( !IsActiveNode< Dim >( leaf->children ) )
 				{
@@ -874,7 +888,11 @@ protected:
 				}
 			}
 		}
-		);
+#if defined(__APPLE__)
+	// --- end serial loop
+#else
+	); // --- end parallel for loop
+#endif
 	}
 	/////////////////
 	// _VertexData //
