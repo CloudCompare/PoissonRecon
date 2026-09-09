@@ -26,10 +26,6 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#include <float.h>
-#include <complex>
-#include <unordered_map>
-
 ///////////////////////////////////////////////////////////////
 //  SparseMatrix (unconstrained max row size specialization) //
 ///////////////////////////////////////////////////////////////
@@ -170,7 +166,7 @@ void SparseMatrix< T , IndexType , 0 >::setRowSize( size_t row , size_t count )
 		}
 		rowSizes[row] = count;
 	}
-	else ERROR_OUT( "Row is out of bounds: 0 <= " , row , " < " , rowNum );
+	else MK_THROW( "Row is out of bounds: 0 <= " , row , " < " , rowNum );
 }
 template< class T , class IndexType >
 void SparseMatrix< T , IndexType , 0 >::resetRowSize( size_t row , size_t count )
@@ -182,7 +178,7 @@ void SparseMatrix< T , IndexType , 0 >::resetRowSize( size_t row , size_t count 
 		if( count>oldCount ) memset( _entries[row]+oldCount , 0 , sizeof( MatrixEntry< T , IndexType > ) * ( count - oldCount ) );
 		rowSizes[row] = count;
 	}
-	else ERROR_OUT( "Row is out of bounds: 0 <= " , row , " < " , rowNum );
+	else MK_THROW( "Row is out of bounds: 0 <= " , row , " < " , rowNum );
 }
 
 template< class T , class IndexType >
@@ -196,7 +192,7 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::Identity( s
 template< class T , class IndexType >
 SparseMatrix< T , IndexType , 0 >& SparseMatrix< T , IndexType , 0 >::operator *= ( T s )
 {
-	ThreadPool::Parallel_for( 0 , rowNum , [&]( unsigned int , size_t i ){ for( size_t j=0 ; j<rowSizes[i] ; j++ ) _entries[i][j].Value *= s; } );
+	ThreadPool::ParallelFor( 0 , rowNum , [&]( unsigned int , size_t i ){ for( size_t j=0 ; j<rowSizes[i] ; j++ ) _entries[i][j].Value *= s; } );
 	return *this;
 }
 template< class T , class IndexType >
@@ -239,10 +235,10 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::operator * 
 	size_t bCols = 0 , bRows = B.rowNum;
 	for( size_t i=0 ; i<A.rowNum ; i++ ) for( size_t j=0 ; j<A.rowSizes[i] ; j++ ) if( aCols<=A[i][j].N ) aCols = A[i][j].N+1;
 	for( size_t i=0 ; i<B.rowNum ; i++ ) for( size_t j=0 ; j<B.rowSizes[i] ; j++ ) if( bCols<=B[i][j].N ) bCols = B[i][j].N+1;
-	if( bRows<aCols ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
+	if( bRows<aCols ) MK_THROW( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
 
 	out.resize( aRows );
-	ThreadPool::Parallel_for( 0 , aRows , [&]( unsigned int , size_t i )
+	ThreadPool::ParallelFor( 0 , aRows , [&]( unsigned int , size_t i )
 	{
 		std::unordered_map< IndexType , T > row;
 		for( size_t j=0 ; j<A.rowSizes[i] ; j++ )
@@ -273,7 +269,7 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::operator + 
 	SparseMatrix out;
 
 	out.resize( rowNum );
-	ThreadPool::Parallel_for( 0 , rowNum , [&]( unsigned int , size_t i )
+	ThreadPool::ParallelFor( 0 , rowNum , [&]( unsigned int , size_t i )
 	{
 		std::unordered_map< IndexType , T > row;
 		if( i<A.rowNum )
@@ -307,7 +303,7 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::operator - 
 	SparseMatrix out;
 
 	out.resize( rowNum );
-	ThreadPool::Parallel_for( 0 , rowNum , [&]( unsigned int , size_t i )
+	ThreadPool::ParallelFor( 0 , rowNum , [&]( unsigned int , size_t i )
 	{
 		std::unordered_map< IndexType , T > row;
 		if( i<A.rowNum )
@@ -345,7 +341,7 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::transpose( 
 	A.resize( aRows );
 	const size_t One = 1;
 	for( size_t i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
-	ThreadPool::Parallel_for( 0 , At.rowNum , [&]( unsigned int , size_t i )
+	ThreadPool::ParallelFor( 0 , At.rowNum , [&]( unsigned int , size_t i )
 	{
 		for( size_t j=0 ; j<At.rowSizes[i] ; j++ )
 		{
@@ -354,7 +350,7 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::transpose( 
 	}
 	);
 
-	ThreadPool::Parallel_for( 0 , A.rowNum , [&]( unsigned int , size_t i )
+	ThreadPool::ParallelFor( 0 , A.rowNum , [&]( unsigned int , size_t i )
 	{
 		size_t t = A.rowSizes[i];
 		A.rowSizes[i] = 0;
@@ -381,17 +377,18 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::transpose( 
 	const SparseMatrix& At = *this;
 	size_t _aRows = 0 , aCols = At.rowNum;
 	for( size_t i=0 ; i<At.rowNum ; i++ ) for( size_t j=0 ; j<At.rowSizes[i] ; j++ ) if( aCols<=At[i][j].N ) _aRows = At[i][j].N+1;
-	if( _aRows>aRows ) ERROR_OUT( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
+	if( _aRows>aRows ) MK_THROW( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
 
 	A.resize( aRows );
 	for( size_t i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
-	ThreadPool::Parallel_for( 0 , At.rowNum , [&]( unsigned int , size_t i )
+	const size_t One = 1;
+	ThreadPool::ParallelFor( 0 , At.rowNum , [&]( unsigned int , size_t i )
 	{
-		for( size_t j=0 ; j<At.rowSizes[i] ; j++ ) AddAtomic( A.rowSizes[ At[i][j].N ] , 1 );
+		for( size_t j=0 ; j<At.rowSizes[i] ; j++ ) AddAtomic( A.rowSizes[ At[i][j].N ] , One );
 	}
 	);
 
-	ThreadPool::Parallel_for( 0 , A.rowNum , [&]( unsigned int , size_t i )
+	ThreadPool::ParallelFor( 0 , A.rowNum , [&]( unsigned int , size_t i )
 	{
 		size_t t = A.rowSizes[i];
 		A.rowSizes[i] = 0;
@@ -423,11 +420,11 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::Multiply( c
 	size_t bCols = 0 , bRows = B.rows();
 	for( size_t i=0 ; i<A.rows() ; i++ ) for( A_const_iterator iter=A.begin(i) ; iter!=A.end(i) ; iter++ ) if( aCols<=iter->N ) aCols = iter->N+1;
 	for( size_t i=0 ; i<B.rows() ; i++ ) for( B_const_iterator iter=B.begin(i) ; iter!=B.end(i) ; iter++ ) if( bCols<=iter->N ) bCols = iter->N+1;
-	if( bRows<aCols ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
+	if( bRows<aCols ) MK_THROW( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
 
 	M.resize( aRows );
 
-	ThreadPool::Parallel_for( 0 , aRows , [&]( unsigned int , size_t i )
+	ThreadPool::ParallelFor( 0 , aRows , [&]( unsigned int , size_t i )
 	{
 		std::unordered_map< IndexType , T > row;
 		for( A_const_iterator iterA=A.begin(i) ; iterA!=A.end(i) ; iterA++ )
@@ -463,7 +460,7 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::Transpose( 
 	A.resize( aRows );
 	for( size_t i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
 	for( size_t i=0 ; i<At.rows() ; i++ ) for( const_iterator iter=At.begin(i) ; iter!=At.end(i) ; iter++ ) A.rowSizes[ iter->N ]++;
-	for( size_t i=0 ; i<A.rows ; i++ )
+	for( size_t i=0 ; i<A.rows() ; i++ )
 	{
 		size_t t = A.rowSizes[i];
 		A.rowSizes[i] = 0;
@@ -491,12 +488,12 @@ SparseMatrix< T , IndexType , 0 > SparseMatrix< T , IndexType , 0 >::Transpose( 
 	SparseMatrix< T , IndexType , 0 > A;
 	size_t _aRows = 0 , aCols = At.rows() , aRows = outRows;
 	for( size_t i=0 ; i<At.rows() ; i++ ) for( const_iterator iter=At.begin(i) ; iter!=At.end(i) ; iter++ ) if( aCols<=iter->N ) _aRows = iter->N+1;
-	if( _aRows>aRows ) ERROR_OUT( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
+	if( _aRows>aRows ) MK_THROW( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
 
 	A.resize( aRows );
 	for( size_t i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
 	for( size_t i=0 ; i<At.rows() ; i++ ) for( const_iterator iter=At.begin(i) ; iter!=At.end(i) ; iter++ ) A.rowSizes[ iter->N ]++;
-	for( size_t i=0 ; i<A.rows ; i++ )
+	for( size_t i=0 ; i<A.rows() ; i++ )
 	{
 		size_t t = A.rowSizes[i];
 		A.rowSizes[i] = 0;
@@ -617,32 +614,33 @@ void SparseMatrix< T , IndexType , MaxRowSize >::resize( size_t rowNum )
 
 		if( rowNum )
 		{
-			_rowSizes = AllocPointer< size_t >( rowNum ) , memset( _rowSizes , 0 , sizeof(size_t)*rowNum );
+			_rowSizes = AllocPointer< size_t >( rowNum );
 			_entries = AllocPointer< MatrixEntry< T , IndexType > >( rowNum * MaxRowSize );
 			_maxRows = rowNum;
 		}
 	}
+	if( rowNum ) memset( _rowSizes , 0 , sizeof(size_t)*rowNum );
 }
 
 template< class T , class IndexType , size_t MaxRowSize >
 void SparseMatrix< T , IndexType , MaxRowSize >::setRowSize( size_t row , size_t rowSize )
 {
-	if( row>=_rowNum ) ERROR_OUT( "Row is out of bounds: 0 <= " , row , " < " , _rowNum );
-	else if( rowSize>MaxRowSize ) ERROR_OUT( "Row size larger than max row size: " , rowSize , " < " , MaxRowSize );
+	if( row>=_rowNum ) MK_THROW( "Row is out of bounds: 0 <= " , row , " < " , _rowNum );
+	else if( rowSize>MaxRowSize ) MK_THROW( "Row size larger than max row size: " , rowSize , " < " , MaxRowSize );
 	else _rowSizes[row] = rowSize;
 }
 template< class T , class IndexType , size_t MaxRowSize >
 void SparseMatrix< T , IndexType , MaxRowSize >::resetRowSize( size_t row , size_t rowSize )
 {
-	if( row>=_rowNum ) ERROR_OUT( "Row is out of bounds: 0 <= " , row , " < " , _rowNum );
-	else if( rowSize>MaxRowSize ) ERROR_OUT( "Row size larger than max row size: " , rowSize , " < " , MaxRowSize );
+	if( row>=_rowNum ) MK_THROW( "Row is out of bounds: 0 <= " , row , " < " , _rowNum );
+	else if( rowSize>MaxRowSize ) MK_THROW( "Row size larger than max row size: " , rowSize , " < " , MaxRowSize );
 	else _rowSizes[row] = rowSize;
 }
 
 template< class T , class IndexType , size_t MaxRowSize >
 SparseMatrix< T , IndexType , MaxRowSize >& SparseMatrix< T , IndexType , MaxRowSize >::operator *= ( T s )
 {
-	ThreadPool::Parallel_for( 0 , _rowNum*MaxRowSize , [&]( unsigned int , size_t i ){ _entries[i].Value *= s; } );
+	ThreadPool::ParallelFor( 0 , _rowNum*MaxRowSize , [&]( unsigned int , size_t i ){ _entries[i].Value *= s; } );
 	return *this;
 }
 

@@ -26,28 +26,16 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#include <string.h>
-#include <stdio.h>
-#include <emmintrin.h>
-#include <vector>
-#ifdef _WIN32
-#include <windows.h>
-#endif // _WIN32
-#include <stddef.h>
-#include <type_traits>
-#include <cstddef>
+template< class C > class ConstArray;
 
 template< class C >
 class Array
 {
 	template< class D > friend class Array;
+	friend class ConstArray< C >;
 	void _assertBounds( std::ptrdiff_t idx ) const
 	{
-		if( idx<min || idx>=max )
-		{
-			StackTracer::Trace();
-			ERROR_OUT( "Array index out-of-bounds: " , min , " <= " , idx , " < " , max );
-		}
+		if( idx<min || idx>=max ) PoissonRecon::MK_THROW( "Array index out-of-bounds: " , min , " <= " , idx , " < " , max );
 	}
 protected:
 	C *data , *_data;
@@ -115,7 +103,7 @@ public:
 		min = max = 0;
 	}
 	template< class D >
-	Array( Array< D >& a )
+	Array( Array< D > a )
 	{
 		_data = NULL;
 		if( !a )
@@ -131,7 +119,7 @@ public:
 			data = (C*)a.data;
 			min = ( a.minimum() * szD ) / szC;
 			max = ( a.maximum() * szD ) / szC;
-			if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) ERROR_OUT( "Could not convert array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " , szC );
+			if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) PoissonRecon::MK_THROW( "Could not convert array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " , szC );
 		}
 	}
 	static Array FromPointer( C* data , std::ptrdiff_t max )
@@ -248,7 +236,7 @@ class ConstArray
 	template< class D > friend class ConstArray;
 	void _assertBounds( std::ptrdiff_t idx ) const
 	{
-		if( idx<min || idx>=max ) ERROR_OUT( "ConstArray index out-of-bounds: " , min , " <= " , idx , " < " , max );
+		if( idx<min || idx>=max ) PoissonRecon::MK_THROW( "ConstArray index out-of-bounds: " , min , " <= " , idx , " < " , max );
 	}
 protected:
 	const C *data;
@@ -270,7 +258,7 @@ public:
 		max = a.maximum();
 	}
 	template< class D >
-	inline ConstArray( const Array< D >& a )
+	inline ConstArray( Array< D > a )
 	{
 		// [WARNING] Changing szC and szD to size_t causes some really strange behavior.
 		std::ptrdiff_t szC = (std::ptrdiff_t)sizeof( C );
@@ -278,10 +266,10 @@ public:
 		data = ( const C* )a.pointer( );
 		min = ( a.minimum() * szD ) / szC;
 		max = ( a.maximum() * szD ) / szC;
-		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) ERROR_OUT( "Could not convert const array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " , szC );
+		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) PoissonRecon::MK_THROW( "Could not convert const array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " , szC );
 	}
 	template< class D >
-	inline ConstArray( const ConstArray< D >& a )
+	inline ConstArray( ConstArray< D > a )
 	{
 		// [WARNING] Chaning szC and szD to size_t causes some really strange behavior.
 		std::ptrdiff_t szC = (std::ptrdiff_t)sizeof( C );
@@ -289,7 +277,15 @@ public:
 		data = ( const C*)a.pointer( );
 		min = ( a.minimum() * szD ) / szC;
 		max = ( a.maximum() * szD ) / szC;
-		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) ERROR_OUT( "Could not convert array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " , szC );
+		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) PoissonRecon::MK_THROW( "Could not convert array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " , szC );
+	}
+	explicit operator Array< C >() const
+	{
+		Array< C > a;
+		a.data = const_cast< C * >( data );
+		a.min = minimum();
+		a.max = maximum();
+		return a;
 	}
 	static ConstArray FromPointer( const C* data , std::ptrdiff_t max )
 	{
@@ -358,51 +354,51 @@ public:
 	std::ptrdiff_t operator - ( const Array< C >& a ) const { return data - a.pointer(); }
 
 	const C* pointer( void ) const { return data; }
-	bool operator !( void ) { return data==NULL; }
-	operator bool( ) { return data!=NULL; }
+	bool operator !( void ) const { return data==NULL; }
+	operator bool( ) const { return data!=NULL; }
 };
 
 template< class C >
 Array< C > memcpy( Array< C > destination , const void* source , size_t size )
 {
-	if( size>destination.maximum()*sizeof(C) ) ERROR_OUT( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
+	if( size>destination.maximum()*sizeof(C) ) PoissonRecon::MK_THROW( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
 	if( size ) memcpy( &destination[0] , source , size );
 	return destination;
 }
 template< class C , class D >
 Array< C > memcpy( Array< C > destination , Array< D > source , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) ) ERROR_OUT( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
-	if( size>source.maximum()*sizeof( D ) ) ERROR_OUT( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
+	if( size>destination.maximum()*sizeof( C ) ) PoissonRecon::MK_THROW( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
+	if( size>source.maximum()*sizeof( D ) ) PoissonRecon::MK_THROW( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
 	if( size ) memcpy( &destination[0] , &source[0] , size );
 	return destination;
 }
 template< class C , class D >
 Array< C > memcpy( Array< C > destination , ConstArray< D > source , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) ) ERROR_OUT( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
-	if( size>source.maximum()*sizeof( D ) ) ERROR_OUT( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
+	if( size>destination.maximum()*sizeof( C ) ) PoissonRecon::MK_THROW( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
+	if( size>source.maximum()*sizeof( D ) ) PoissonRecon::MK_THROW( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
 	if( size ) memcpy( &destination[0] , &source[0] , size );
 	return destination;
 }
 template< class D >
 void* memcpy( void* destination , Array< D > source , size_t size )
 {
-	if( size>source.maximum()*sizeof( D ) ) ERROR_OUT( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
+	if( size>source.maximum()*sizeof( D ) ) PoissonRecon::MK_THROW( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
 	if( size ) memcpy( destination , &source[0] , size );
 	return destination;
 }
 template< class D >
 void* memcpy( void* destination , ConstArray< D > source , size_t size )
 {
-	if( size>source.maximum()*sizeof( D ) ) ERROR_OUT( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
+	if( size>source.maximum()*sizeof( D ) ) PoissonRecon::MK_THROW( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
 	if( size ) memcpy( destination , &source[0] , size );
 	return destination;
 }
 template< class C >
 Array< C > memset( Array< C > destination , int value , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) ) ERROR_OUT( "Size of set exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
+	if( size>destination.maximum()*sizeof( C ) ) PoissonRecon::MK_THROW( "Size of set exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
 	if( size ) memset( &destination[0] , value , size );
 	return destination;
 }
@@ -410,25 +406,28 @@ Array< C > memset( Array< C > destination , int value , size_t size )
 template< class C >
 size_t fread( Array< C > destination , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>destination.maximum()*sizeof( C ) ) ERROR_OUT( "Size of read exceeds source maximum: " , count*eSize , " > " , destination.maximum()*sizeof( C ) );
-	return fread( &destination[0] , eSize , count , fp );
+	if( count*eSize>destination.maximum()*sizeof( C ) ) PoissonRecon::MK_THROW( "Size of read exceeds source maximum: " , count*eSize , " > " , destination.maximum()*sizeof( C ) );
+	if( count ) return fread( &destination[0] , eSize , count , fp );
+	else return 0;
 }
 template< class C >
 size_t fwrite( Array< C > source , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>source.maximum()*sizeof( C ) ) ERROR_OUT( "Size of write exceeds source maximum: " , count*eSize , " > " , source.maximum()*sizeof( C ) );
-	return fwrite( &source[0] , eSize , count , fp );
+	if( count*eSize>source.maximum()*sizeof( C ) ) PoissonRecon::MK_THROW( "Size of write exceeds source maximum: " , count*eSize , " > " , source.maximum()*sizeof( C ) );
+	if( count ) return fwrite( &source[0] , eSize , count , fp );
+	else return 0;
 }
 template< class C >
 size_t fwrite( ConstArray< C > source , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>source.maximum()*sizeof( C ) ) ERROR_OUT( "Size of write exceeds source maximum: " , count*eSize , " > " , source.maximum()*sizeof( C ) );
-	return fwrite( &source[0] , eSize , count , fp );
+	if( count*eSize>source.maximum()*sizeof( C ) ) PoissonRecon::MK_THROW( "Size of write exceeds source maximum: " , count*eSize , " > " , source.maximum()*sizeof( C ) );
+	if( count ) return fwrite( &source[0] , eSize , count , fp );
+	else return 0;
 }
 template< class C >
 void qsort( Array< C > base , size_t numElements , size_t elementSize , int (*compareFunction)( const void* , const void* ) )
 {
-	if( sizeof(C)!=elementSize ) ERROR_OUT( "Element sizes differ: " , sizeof(C) , " != " , elementSize );
-	if( base.minimum()>0 || base.maximum()<numElements ) ERROR_OUT( "Array access out of bounds: " , base.minimum() , " <= 0 <= " , base.maximum() , " <= " , numElements );
+	if( sizeof(C)!=elementSize ) PoissonRecon::MK_THROW( "Element sizes differ: " , sizeof(C) , " != " , elementSize );
+	if( base.minimum()>0 || base.maximum()<numElements ) MK_THROW( "Array access out of bounds: " , base.minimum() , " <= 0 <= " , base.maximum() , " <= " , numElements );
 	qsort( base.pointer() , numElements , elementSize , compareFunction );
 }

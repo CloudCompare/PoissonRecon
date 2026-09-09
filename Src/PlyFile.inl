@@ -18,27 +18,36 @@ chars representing red, green and blue.
 
 ---------------------------------------------------------------
 
-Copyright (c) 1994 The Board of Trustees of The Leland Stanford
-Junior University.  All rights reserved.   
+Copyright (c) 2020, Georgia Institute of Technology
+All rights reserved.
 
-Permission to use, copy, modify and distribute this software and its   
-documentation for any purpose is hereby granted without fee, provided   
-that the above copyright notice and this permission notice appear in   
-all copies of this software and that you do not sell the software.   
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
 
-THE SOFTWARE IS PROVIDED "AS IS" AND WITHOUT WARRANTY OF ANY KIND,   
-EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY   
-WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.   
+Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer. Redistributions in binary form
+must reproduce the above copyright notice, this list of conditions and the
+following disclaimer in the documentation and/or other materials provided with
+the distribution. 
+
+Neither the name of the Georgia Institute of Technology nor the names of its
+contributors may be used to endorse or promote products derived from this
+software without specific prior written permission. 
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE  GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-#include "PlyFile.h"
-#include "MyMiscellany.h"
-
-const char *type_names[] =
+static const char *type_names[] =
 {
 	"invalid",
 	"char",
@@ -51,7 +60,6 @@ const char *type_names[] =
 	"ulonglong",
 	"float",
 	"double",
-
 	"int8",       // character                 1
 	"uint8",      // unsigned character        1
 	"int16",      // short integer             2
@@ -64,7 +72,7 @@ const char *type_names[] =
 	"float64",    // double-precision float    8
 };
 
-int ply_type_size[] =
+static const int ply_type_size[] =
 {
 	0,
 	1,
@@ -99,46 +107,49 @@ typedef union
 static int native_binary_type = -1;
 static int types_checked = 0;
 
-#define NO_OTHER_PROPS  -1
+static const int no_other_props = -1;
 
-#define DONT_STORE_PROP  0
-#define STORE_PROP       1
+static const int dont_store_prop = 0;
+static const int      store_prop = 1;
 
-#define OTHER_PROP       0
-#define NAMED_PROP       1
+static const int other_prop = 0;
+static const int named_prop = 1;
 
 
 /* write to a file the word describing a PLY file data type */
-void write_scalar_type( FILE * , int );
+inline void write_scalar_type( FILE * , int );
 
 /* read a line from a file and break it up into separate words */
-std::vector< std::string > get_words( FILE * , char ** );
+inline std::vector< std::string > get_words( FILE * , char ** );
 
 /* write to a file the word describing a PLY file data type */
-void write_scalar_type( FILE * , int );
+inline void write_scalar_type( FILE * , int );
 
 /* write an item to a file */
-void write_binary_item( FILE * , int , int , unsigned int , long long , unsigned long long , double , int );
-void write_ascii_item ( FILE * ,       int , unsigned int , long long , unsigned long long , double , int );
+inline void write_binary_item( FILE * , int , int , unsigned int , long long , unsigned long long , double , int );
+inline void write_ascii_item ( FILE * ,       int , unsigned int , long long , unsigned long long , double , int );
 
 /* store a value into where a pointer and a type specify */
-void store_item( void * , int , int , unsigned int , long long , unsigned long long , double );
+inline void store_item( void * , int , int , unsigned int , long long , unsigned long long , double );
 
 /* return the value of a stored item */
-void get_stored_item( void * , int , int & , unsigned int & , long long & , unsigned long long & , double & );
+inline void get_stored_item( void * , int , int & , unsigned int & , long long & , unsigned long long & , double & );
 
 /* return the value stored in an item, given ptr to it and its type */
-double get_item_value( const void * , int );
+inline double get_item_value( const void * , int );
 
 /* get binary or ascii item and store it according to ptr and type */
-void get_ascii_item( const std::string & , int , int & , unsigned int & , long long & , unsigned long long & , double & );
-void get_binary_item( FILE * , int       , int , int & , unsigned int & , long long & , unsigned long long & , double & );
+inline void get_ascii_item( const std::string & , int , int & , unsigned int & , long long & , unsigned long long & , double & );
+inline void get_binary_item( FILE * , int       , int , int & , unsigned int & , long long & , unsigned long long & , double & );
 
 /* byte ordering */
-void get_native_binary_type();
-void swap_bytes( void * , int );
+inline void get_native_binary_type();
+inline void swap_bytes( void * , int );
 
-void check_types();
+inline void check_types( void );
+
+inline int get_prop_type( const std::string &type_name );
+inline void setup_other_props( PlyElement *elem );
 
 /*************/
 /*  Writing  */
@@ -235,13 +246,13 @@ void PlyFile::describe_element( const std::string &elem_name , size_t nelems , i
 {
 	/* look for appropriate element */
 	PlyElement *elem = find_element( elem_name );
-	if( elem==NULL ) ERROR_OUT( "Can't find element '" , elem_name , "'" );
+	if( elem==NULL ) MK_THROW( "Can't find element '" , elem_name , "'" );
 
 	elem->num = nelems;
 
 	/* copy the list of properties */
 	elem->props.resize( nprops );
-	for( int i=0 ; i<nprops ; i++ ) elem->props[i] = PlyStoredProperty( prop_list[i] , NAMED_PROP );
+	for( int i=0 ; i<nprops ; i++ ) elem->props[i] = PlyStoredProperty( prop_list[i] , named_prop );
 }
 
 
@@ -259,11 +270,11 @@ void PlyFile::describe_property( const std::string &elem_name , const PlyPropert
 	PlyElement *elem = find_element( elem_name );
 	if( elem == NULL )
 	{
-		WARN( "Can't find element '" , elem_name , "'" );
+		MK_WARN( "Can't find element '" , elem_name , "'" );
 		return;
 	}
 
-	elem->props.push_back( PlyStoredProperty( *prop , NAMED_PROP ) );
+	elem->props.push_back( PlyStoredProperty( *prop , named_prop ) );
 }
 
 
@@ -278,12 +289,12 @@ void PlyFile::describe_other_properties( const PlyOtherProp &other , int offset 
 	PlyElement *elem = find_element( other.name );
 	if( elem==NULL )
 	{
-		WARN( "Can't find element '" , other.name , "'" );
+		MK_WARN( "Can't find element '" , other.name , "'" );
 		return;
 	}
 
 	elem->props.reserve( elem->props.size() + other.props.size() );
-	for( int i=0 ; i<other.props.size() ; i++ ) elem->props.push_back( PlyStoredProperty( other.props[i] , OTHER_PROP ) );
+	for( int i=0 ; i<other.props.size() ; i++ ) elem->props.push_back( PlyStoredProperty( other.props[i] , other_prop ) );
 
 	/* save other info about other properties */
 	elem->other_size = other.size;
@@ -302,7 +313,7 @@ void PlyFile::element_count( const std::string &elem_name , size_t nelems )
 {
 	/* look for appropriate element */
 	PlyElement *elem = find_element( elem_name );
-	if( elem==NULL ) ERROR_OUT( "Can't find element '" , elem_name , "'" );
+	if( elem==NULL ) MK_THROW( "Can't find element '" , elem_name , "'" );
 
 	elem->num = nelems;
 }
@@ -321,7 +332,7 @@ void PlyFile::header_complete( void )
 	case PLY_ASCII: fprintf( fp , "format ascii 1.0\n" )                    ; break;
 	case PLY_BINARY_BE: fprintf( fp , "format binary_big_endian 1.0\n" )    ; break;
 	case PLY_BINARY_LE: fprintf( fp , "format binary_little_endian 1.0\n" ) ; break;
-	default: ERROR_OUT( "Bad file type: " , file_type );
+	default: MK_THROW( "Bad file type: " , file_type );
 	}
 
 	/* write out the comments */
@@ -369,7 +380,7 @@ elem_name - name of element we're talking about
 void PlyFile::put_element_setup( const std::string &elem_name )
 {
 	PlyElement *elem = find_element( elem_name );
-	if( elem==NULL ) ERROR_OUT( "Can't find element '" , elem_name , "'" );
+	if( elem==NULL ) MK_THROW( "Can't find element '" , elem_name , "'" );
 	which_elem = elem;
 }
 
@@ -407,7 +418,7 @@ void PlyFile::put_element( void *elem_ptr )
 		/* write out each property of the element */
 		for( int j=0 ; j<elem->props.size() ; j++ )
 		{
-			if( elem->props[j].store==OTHER_PROP ) elem_data = *other_ptr;
+			if( elem->props[j].store==other_prop ) elem_data = *other_ptr;
 			else                                   elem_data = (char *)elem_ptr;
 			if( elem->props[j].prop.is_list )
 			{
@@ -439,7 +450,7 @@ void PlyFile::put_element( void *elem_ptr )
 		/* write out each property of the element */
 		for( int j=0 ; j<elem->props.size() ; j++ )
 		{
-			if (elem->props[j].store==OTHER_PROP ) elem_data = *other_ptr;
+			if (elem->props[j].store==other_prop ) elem_data = *other_ptr;
 			else                                   elem_data = (char *)elem_ptr;
 			if( elem->props[j].prop.is_list )
 			{
@@ -550,8 +561,8 @@ PlyFile *PlyFile::_Read( FILE *fp , std::vector< std::string > &elem_names )
 	/* later to say whether or not to store each property for the user */
 	for( int i=0 ; i<plyfile->elems.size() ; i++ )
 	{
-		for( int j=0 ; j<plyfile->elems[i].props.size() ; j++ ) plyfile->elems[i].props[j].store = DONT_STORE_PROP;
-		plyfile->elems[i].other_offset = NO_OTHER_PROPS; /* no "other" props by default */
+		for( int j=0 ; j<plyfile->elems[i].props.size() ; j++ ) plyfile->elems[i].props[j].store = dont_store_prop;
+		plyfile->elems[i].other_offset = no_other_props; /* no "other" props by default */
 	}
 
 	/* set return values about the elements */
@@ -611,9 +622,9 @@ nprops   - number of properties
 returns a list of properties, or NULL if the file doesn't contain that elem
 ******************************************************************************/
 
-std::vector< PlyProperty * > PlyFile::get_element_description( const std::string &elem_name , size_t &nelems )
+std::vector< PlyProperty > PlyFile::get_element_description( const std::string &elem_name , size_t &nelems )
 {
-	std::vector< PlyProperty * > prop_list;
+	std::vector< PlyProperty > prop_list;
 
 	/* find information about the element */
 	PlyElement *elem = find_element( elem_name );
@@ -622,7 +633,7 @@ std::vector< PlyProperty * > PlyFile::get_element_description( const std::string
 
 	/* make a copy of the element's property list */
 	prop_list.resize( elem->props.size() );
-	for( int i=0 ; i<elem->props.size() ; i++ ) prop_list[i] = new PlyProperty( elem->props[i].prop );
+	for( int i=0 ; i<elem->props.size() ; i++ ) prop_list[i] = elem->props[i].prop;
 
 	/* return this duplicate property list */
 	return prop_list;
@@ -652,7 +663,7 @@ void PlyFile::get_element_setup( const std::string &elem_name , int nprops , Ply
 		PlyProperty *prop = elem->find_property( prop_list[i].name , index );
 		if( prop==NULL )
 		{
-			WARN( "Can't find property '" , prop_list[i].name , "' in element '" , elem_name , "'" );
+			MK_WARN( "Can't find property '" , prop_list[i].name , "' in element '" , elem_name , "'" );
 			continue;
 		}
 
@@ -663,7 +674,7 @@ void PlyFile::get_element_setup( const std::string &elem_name , int nprops , Ply
 		prop->count_offset = prop_list[i].count_offset;
 
 		/* specify that the user wants this property */
-		elem->props[index].store = STORE_PROP;
+		elem->props[index].store = store_prop;
 	}
 }
 
@@ -695,7 +706,7 @@ int PlyFile::get_property( const std::string &elem_name , const PlyProperty *pro
 	prop_ptr->count_offset   = prop->count_offset;
 
 	/* specify that the user wants this property */
-	elem->props[index].store = STORE_PROP;
+	elem->props[index].store = store_prop;
 
 	return 1;
 }
@@ -819,7 +830,7 @@ bool PlyFile::set_other_properties( const std::string &elem_name , int offset , 
 	PlyElement *elem = find_element( elem_name );
 	if( elem==NULL )
 	{
-		WARN( "Can't find element '" , elem_name , "'" );
+		MK_WARN( "Can't find element '" , elem_name , "'" );
 		return false;
 	}
 
@@ -838,7 +849,7 @@ bool PlyFile::set_other_properties( const std::string &elem_name , int offset , 
 	for( int i=0 ; i<elem->props.size() ; i++ ) if( !elem->props[i].store ) other.props.push_back( elem->props[i].prop );
 
 	/* set other_offset pointer appropriately if there are NO other properties */
-	if( !other.props.size() ) elem->other_offset = NO_OTHER_PROPS;
+	if( !other.props.size() ) elem->other_offset = no_other_props;
 	return true;
 }
 
@@ -865,7 +876,7 @@ PlyOtherElems *PlyFile::get_other_element( std::string &elem_name , size_t elem_
 {
 	/* look for appropriate element */
 	PlyElement *elem = find_element( elem_name );
-	if( elem==NULL ) ERROR_OUT( "Can't find element '" , elem_name , "'" );
+	if( elem==NULL ) MK_THROW( "Can't find element '" , elem_name , "'" );
 
 	if( other_elems==NULL ) other_elems = new PlyOtherElems();
 	other_elems->other_list.resize( other_elems->other_list.size()+1 );
@@ -1028,7 +1039,7 @@ void PlyFile::_ascii_get_element( void *elem_ptr )
 	elem = which_elem;
 
 	/* do we need to setup for other_props? */
-	if( elem->other_offset!=NO_OTHER_PROPS )
+	if( elem->other_offset!=no_other_props )
 	{
 		char **ptr;
 		other_flag = 1;
@@ -1042,7 +1053,7 @@ void PlyFile::_ascii_get_element( void *elem_ptr )
 
 	/* read in the element */
 	words = get_words( fp , &orig_line );
-	if( !words.size() ) ERROR_OUT( "Unexpected end of file" );
+	if( !words.size() ) MK_THROW( "Unexpected end of file" );
 
 	which_word = 0;
 
@@ -1135,7 +1146,7 @@ void PlyFile::_binary_get_element( void *elem_ptr )
 	elem = which_elem;
 
 	/* do we need to setup for other_props? */
-	if( elem->other_offset!=NO_OTHER_PROPS )
+	if( elem->other_offset!=no_other_props )
 	{
 		char **ptr;
 		other_flag = 1;
@@ -1221,7 +1232,7 @@ code - code for type
 void write_scalar_type( FILE *fp , int code )
 {
 	/* make sure this is a valid code */
-	if( code<=PLY_START_TYPE || code>=PLY_END_TYPE ) ERROR_OUT( "Bad data code: " , code );
+	if( code<=PLY_START_TYPE || code>=PLY_END_TYPE ) MK_THROW( "Bad data code: " , code );
 
 	/* write the code to a file */
 	fprintf( fp , "%s" , type_names[code] );
@@ -1265,7 +1276,7 @@ void get_native_binary_type( void )
 	test.int_value = 1;
 	if     ( test.byte_values[0]==1 ) native_binary_type = PLY_BINARY_LE;
 	else if( test.byte_values[sizeof(int)-1] == 1) native_binary_type = PLY_BINARY_BE;
-	else ERROR_OUT( "Couldn't determine machine endianness" );
+	else MK_THROW( "Couldn't determine machine endianness" );
 }
 
 /******************************************************************************
@@ -1286,7 +1297,7 @@ void check_types()
 		(ply_type_size[PLY_ULONGLONG] != sizeof(unsigned long long)) ||	
 		(ply_type_size[PLY_FLOAT] != sizeof(float)) ||	
 		(ply_type_size[PLY_DOUBLE] != sizeof(double)))
-		ERROR_OUT( "Type sizes do not match built-in types" );
+		MK_THROW( "Type sizes do not match built-in types" );
 
 	types_checked = 1;
 }
@@ -1308,9 +1319,9 @@ returns a list of words from the line, or NULL if end-of-file
 
 std::vector< std::string > get_words( FILE *fp , char **orig_line )
 {
-#define BIG_STRING 4096
-	static char str[BIG_STRING];
-	static char str_copy[BIG_STRING];
+	static const unsigned int BigString = 4096;
+	static char str[BigString];
+	static char str_copy[BigString];
 	std::vector< std::string > words;
 	int max_words = 10;
 	int num_words = 0;
@@ -1318,7 +1329,7 @@ std::vector< std::string > get_words( FILE *fp , char **orig_line )
 	char *result;
 
 	/* read in a line */
-	result = fgets( str , BIG_STRING , fp );
+	result = fgets( str , BigString , fp );
 	if( result==NULL )
 	{
 		*orig_line = NULL;
@@ -1328,8 +1339,8 @@ std::vector< std::string > get_words( FILE *fp , char **orig_line )
 	/* (this guarentees that there will be a space before the */
 	/*  null character at the end of the string) */
 
-	str[BIG_STRING-2] = ' ';
-	str[BIG_STRING-1] = '\0';
+	str[BigString-2] = ' ';
+	str[BigString-1] = '\0';
 
 	for( ptr=str , ptr2=str_copy ; *ptr!='\0' ; ptr++ , ptr2++ )
 	{
@@ -1411,7 +1422,7 @@ double get_item_value( const void *item , int type )
 	case PLY_FLOAT_32:  return (double)*(const              float *)item;
 	case PLY_DOUBLE:
 	case PLY_FLOAT_64:  return (double)*(const             double *)item;
-	default: ERROR_OUT( "Bad type: " , type );
+	default: MK_THROW( "Bad type: " , type );
 	}
 	return 0;
 }
@@ -1435,7 +1446,7 @@ void write_binary_item( FILE *fp , int file_type , int int_val , unsigned int ui
 	unsigned short ushort_val;
 	short short_val;
 	float float_val;
-	void *value;
+	void *value = NULL;
 
 	switch (type) {
 	case PLY_CHAR:
@@ -1483,12 +1494,12 @@ void write_binary_item( FILE *fp , int file_type , int int_val , unsigned int ui
 	case PLY_FLOAT_64:
 		value = &double_val;
 		break;
-	default: ERROR_OUT( "Bad type: " , type );
+	default: MK_THROW( "Bad type: " , type );
 	}
 
 
 	if( (file_type!=native_binary_type) && (ply_type_size[type]>1) ) swap_bytes( (char *)value , ply_type_size[type] );
-	if( fwrite( value , ply_type_size[type] , 1 , fp )!=1 ) ERROR_OUT( "Failed to write binary item" );
+	if( fwrite( value , ply_type_size[type] , 1 , fp )!=1 ) MK_THROW( "Failed to write binary item" );
 }
 
 
@@ -1513,11 +1524,11 @@ void write_ascii_item( FILE *fp , int int_val , unsigned int uint_val , long lon
 	case PLY_INT_16:
 	case PLY_INT:
 	case PLY_INT_32:
-		if( fprintf( fp , "%d " , int_val )<=0 ) ERROR_OUT( "fprintf() failed -- aborting" );
+		if( fprintf( fp , "%d " , int_val )<=0 ) MK_THROW( "fprintf() failed -- aborting" );
 		break;
 	case PLY_LONGLONG:
 	case PLY_INT_64:
-		if( fprintf( fp , "%lld " , longlong_val )<=0 ) ERROR_OUT( "fprintf() failed -- aborting" );
+		if( fprintf( fp , "%lld " , longlong_val )<=0 ) MK_THROW( "fprintf() failed -- aborting" );
 		break;
 	case PLY_UCHAR:
 	case PLY_UINT_8:
@@ -1525,19 +1536,19 @@ void write_ascii_item( FILE *fp , int int_val , unsigned int uint_val , long lon
 	case PLY_UINT_16:
 	case PLY_UINT:
 	case PLY_UINT_32:
-		if( fprintf( fp , "%u " , uint_val )<=0 ) ERROR_OUT( "fprintf() failed -- aborting" );
+		if( fprintf( fp , "%u " , uint_val )<=0 ) MK_THROW( "fprintf() failed -- aborting" );
 		break;
 	case PLY_ULONGLONG:
 	case PLY_UINT_64:
-		if( fprintf( fp , "%llu " , ulonglong_val )<=0 ) ERROR_OUT( "fprintf() failed -- aborting" );
+		if( fprintf( fp , "%llu " , ulonglong_val )<=0 ) MK_THROW( "fprintf() failed -- aborting" );
 		break;
 	case PLY_FLOAT:
 	case PLY_FLOAT_32:
 	case PLY_DOUBLE:
 	case PLY_FLOAT_64:
-		if( fprintf( fp , "%g " , double_val )<=0 ) ERROR_OUT( "fprintf() failed -- aborting" );
+		if( fprintf( fp , "%g " , double_val )<=0 ) MK_THROW( "fprintf() failed -- aborting" );
 		break;
-	default: ERROR_OUT( "Bad type: " , type );
+	default: MK_THROW( "Bad type: " , type );
 	}
 }
 
@@ -1639,7 +1650,7 @@ void get_stored_item( void *ptr , int type , int &int_val , unsigned int &uint_v
 		longlong_val = (long long)double_val;
 		ulonglong_val = (unsigned long long)double_val;
 		break;
-	default: ERROR_OUT( "Bad type: " , type );
+	default: MK_THROW( "Bad type: " , type );
 	}
 }
 
@@ -1659,19 +1670,25 @@ double_val - double-precision floating point value
 
 void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsigned int &uint_val , long long &longlong_val , unsigned long long &ulonglong_val , double &double_val )
 {
+	// Use memcpy instead of type-punning pointer casts to read from the
+	// buffer. At -O3 GCC exploits casted pointers and may reorder or eliminate the loads, returning garbage.
+	//
+	// For the float/double cases we also avoid direct casts from
+	// floating-point to unsigned integer types, which are UB when the
+	// value is negative or out-of-range.  Instead we convert through
+	// long long first (well-defined truncation from double for values
+	// within ±2^63) and then use the well-defined signed-to-unsigned
+	// integer conversion.
 	char c[8];
-	void *ptr;
 
-	ptr = ( void * )c;
-
-	if( fread( ptr , ply_type_size[type] , 1 , fp )!=1 ) ERROR_OUT( "fread() failed -- aborting." );
-	if( ( file_type!=native_binary_type ) && ( ply_type_size[type]>1 ) ) swap_bytes( (char *)ptr , ply_type_size[type] );
+	if( fread( c , ply_type_size[type] , 1 , fp )!=1 ) MK_THROW( "fread() failed -- aborting: " , std::string( type_names[type] ) );
+	if( ( file_type!=native_binary_type ) && ( ply_type_size[type]>1 ) ) swap_bytes( c , ply_type_size[type] );
 
 	switch( type )
 	{
 	case PLY_CHAR:
 	case PLY_INT_8:
-		int_val = *((char *) ptr);
+		int_val = (signed char)c[0];
 		uint_val = int_val;
 		longlong_val = int_val;
 		ulonglong_val = int_val;
@@ -1679,7 +1696,7 @@ void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsig
 		break;
 	case PLY_UCHAR:
 	case PLY_UINT_8:
-		uint_val = *((unsigned char *) ptr);
+		uint_val = (unsigned char)c[0];
 		int_val = uint_val;
 		longlong_val = int_val;
 		ulonglong_val = int_val;
@@ -1687,7 +1704,7 @@ void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsig
 		break;
 	case PLY_SHORT:
 	case PLY_INT_16:
-		int_val = *((short int *) ptr);
+		{ short v; memcpy( &v , c , sizeof(v) ); int_val = v; }
 		uint_val = int_val;
 		longlong_val = int_val;
 		ulonglong_val = int_val;
@@ -1695,7 +1712,7 @@ void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsig
 		break;
 	case PLY_USHORT:
 	case PLY_UINT_16:
-		uint_val = *((unsigned short int *) ptr);
+		{ unsigned short v; memcpy( &v , c , sizeof(v) ); uint_val = v; }
 		int_val = uint_val;
 		longlong_val = int_val;
 		ulonglong_val = int_val;
@@ -1703,7 +1720,7 @@ void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsig
 		break;
 	case PLY_INT:
 	case PLY_INT_32:
-		int_val = *((int *) ptr);
+		memcpy( &int_val , c , sizeof(int_val) );
 		uint_val = int_val;
 		longlong_val = int_val;
 		ulonglong_val = int_val;
@@ -1711,7 +1728,7 @@ void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsig
 		break;
 	case PLY_UINT:
 	case PLY_UINT_32:
-		uint_val = *((unsigned int *) ptr);
+		memcpy( &uint_val , c , sizeof(uint_val) );
 		int_val = uint_val;
 		longlong_val = int_val;
 		ulonglong_val = int_val;
@@ -1719,7 +1736,7 @@ void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsig
 		break;
 	case PLY_LONGLONG:
 	case PLY_INT_64:
-		longlong_val = *((long long *) ptr);
+		memcpy( &longlong_val , c , sizeof(longlong_val) );
 		ulonglong_val = (unsigned long long)longlong_val;
 		int_val = (int)longlong_val;
 		uint_val = (unsigned int)longlong_val;
@@ -1727,7 +1744,7 @@ void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsig
 		break;
 	case PLY_ULONGLONG:
 	case PLY_UINT_64:
-		ulonglong_val = *((unsigned long long *) ptr);
+		memcpy( &ulonglong_val , c , sizeof(ulonglong_val) );
 		longlong_val = (long long)ulonglong_val;
 		int_val = (int)ulonglong_val;
 		uint_val = (unsigned int)ulonglong_val;
@@ -1735,21 +1752,21 @@ void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsig
 		break;
 	case PLY_FLOAT:
 	case PLY_FLOAT_32:
-		double_val = *((float *) ptr);
-		int_val = (int)double_val;
-		uint_val = (unsigned int)double_val;
+		{ float v; memcpy( &v , c , sizeof(v) ); double_val = v; }
 		longlong_val = (long long)double_val;
-		ulonglong_val = (unsigned long long)int_val;
+		int_val = (int)longlong_val;
+		uint_val = (unsigned int)longlong_val;
+		ulonglong_val = (unsigned long long)longlong_val;
 		break;
 	case PLY_DOUBLE:
 	case PLY_FLOAT_64:
-		double_val = *((double *) ptr);
-		int_val = (int)double_val;
-		uint_val = (unsigned int)double_val;
+		memcpy( &double_val , c , sizeof(double_val) );
 		longlong_val = (long long)double_val;
-		ulonglong_val = (unsigned long long)int_val;
+		int_val = (int)longlong_val;
+		uint_val = (unsigned int)longlong_val;
+		ulonglong_val = (unsigned long long)longlong_val;
 		break;
-	default: ERROR_OUT( "Bad type: " , type );
+	default: MK_THROW( "Bad type: " , type );
 	}
 }
 
@@ -1821,7 +1838,7 @@ void get_ascii_item( const std::string &word , int type , int &int_val , unsigne
 		longlong_val = (long long)double_val;
 		ulonglong_val = (unsigned long long)double_val;
 		break;
-	default: ERROR_OUT( "Bad type: " , type );
+	default: MK_THROW( "Bad type: " , type );
 	}
 }
 
@@ -1863,7 +1880,7 @@ void store_item( void *item , int type , int int_val , unsigned int uint_val , l
 	case PLY_FLOAT_32: *(        float *)item = (         float)double_val ; break;
 	case PLY_DOUBLE:
 	case PLY_FLOAT_64: *(       double *)item = (        double)double_val ; break;
-	default: ERROR_OUT( "Bad type: " , type );
+	default: MK_THROW( "Bad type: " , type );
 	}
 }
 
@@ -1935,7 +1952,7 @@ void PlyFile::add_property( const std::vector< std::string > &words )
 	}
 
 	/* add this property to the list of properties of the current element */
-	elems.back().props.push_back( PlyStoredProperty( prop , DONT_STORE_PROP ) );
+	elems.back().props.push_back( PlyStoredProperty( prop , dont_store_prop ) );
 }
 
 
