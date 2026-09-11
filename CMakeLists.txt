@@ -3,10 +3,8 @@ cmake_minimum_required( VERSION 3.10 )
 project( QPOISSON_RECON_LIB )
 
 add_library( ${PROJECT_NAME} STATIC )
-
-# To remove very annoying "NO ARGUMENTS THAT DEPEND ON A TEMPLATE PARAMETER" errors with G++!
 if( UNIX OR MINGW )
-	target_compile_options( ${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fpermissive -w> )
+	target_compile_options( ${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wno-dangling-else> )
 elseif( MSVC )
 	target_compile_options( ${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/bigobj> )
 endif()
@@ -25,14 +23,9 @@ target_include_directories( ${PROJECT_NAME}
 		${CMAKE_CURRENT_SOURCE_DIR}/Src
 )
 
-target_compile_definitions( ${PROJECT_NAME}
-	PRIVATE
-		#_CRT_SECURE_NO_DEPRECATE TODO(RJ): should be ok now
-		#_CRT_SECURE_NO_WARNINGS TODO(RJ): should be ok now
-		NOMINMAX
-)
-
+# Use openMP for poisson else it default to std::async for threading
 option( POISSON_RECON_WITH_OPEN_MP "Compile PoissonRecon plugin with OpenMP support" OFF )
+
 if( POISSON_RECON_WITH_OPEN_MP )
 	find_package( OpenMP )
 
