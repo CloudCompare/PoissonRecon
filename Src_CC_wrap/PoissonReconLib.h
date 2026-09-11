@@ -98,7 +98,7 @@ class PoissonReconLib
 		bool exactInterpolation = false;
 
 		//! This parameter specifies the number of threads across which the solver should be parallelized
-		int threads = 1;
+		unsigned int threads = 1;
 
 		/** The parameters below are accessible via the command line but are not described in the official documentation **/
 

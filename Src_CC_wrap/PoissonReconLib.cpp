@@ -270,6 +270,8 @@ static bool ReconstructWithBoundary(const PoissonReconLib::ICloud<Real>& cloud,
 {
 	using FEMSigs = IsotropicUIntPack<DIMENSION, FEMSig>;
 
+	ThreadPool::SetNumTreads(params.threads);
+
 	// Solver parameters
 	using SolverParams = Reconstructor::Poisson::SolutionParameters<Real>;
 	SolverParams solverParams;
@@ -355,7 +357,7 @@ bool PoissonReconLib::Reconstruct(const Parameters&   params,
 #ifdef _OPENMP
 	ThreadPool::ParallelizationType = ThreadPool::ParallelType::OPEN_MP;
 #else
-	// Use std::lib async
+	// Use std::async
 	ThreadPool::ParallelizationType = ThreadPool::ParallelType::ASYNC;
 #endif
 	try
