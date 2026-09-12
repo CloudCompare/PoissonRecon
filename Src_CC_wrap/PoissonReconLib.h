@@ -147,6 +147,6 @@ class PoissonReconLib
 	//! Reconstruct a mesh from a point cloud
 	template <typename Real>
 	static bool Reconstruct(const Parameters&                    params,
-	                        const PoissonReconLib::ICloud<Real>& inCloud,
-	                        PoissonReconLib::IMesh<Real>&        ouMesh);
+	                        const ICloud<Real>& inCloud,
+	                        IMesh<Real>&        outMesh);
 };
